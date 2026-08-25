@@ -1,0 +1,74 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+
+  roomMemberships RoomMember[]
+  messages        Message[]
+  hostedRooms     Room[]       @relation("RoomHost")
+}
+
+model Room {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  hostId    String
+  host      User     @relation("RoomHost", fields: [hostId], references: [id])
+
+  members   RoomMember[]
+  messages  Message[]
+  mediaState MediaState?
+}
+
+model RoomMember {
+  id       String @id @default(cuid())
+  userId   String
+  roomId   String
+  joinedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+
+  @@unique([userId, roomId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  userId String
+  roomId String
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+}
+
+model MediaState {
+  id          String   @id @default(cuid())
+  roomId      String   @unique
+  mediaType   String   // "video" or "slideshow"
+  mediaUrl    String?
+  isPlaying   Boolean  @default(false)
+  currentTime Float    @default(0)
+  slideIndex  Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id])
+}
