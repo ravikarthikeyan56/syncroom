@@ -3,7 +3,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getSocket } from "@/lib/socket";
-
+import Slideshow from "@/components/Slideshow";
 interface Message {
   id: string;
   content: string;
@@ -102,6 +102,9 @@ export default function RoomPage() {
         </div>
         <div className="mb-4">
           <VideoPlayer roomId={roomId} />
+          <div className="mb-4">
+            <Slideshow roomId={roomId} />
+          </div>
         </div>
         <div className="flex flex-1 flex-col rounded-lg bg-white shadow">
           <div

@@ -7,7 +7,7 @@ import authRoutes from "./routes/auth";
 import roomRoutes from "./routes/rooms";
 import { prisma } from "./lib/prisma";
 dotenv.config();
-
+import redis from "./lib/redis";
 const app = express();
 const httpServer = createServer(app);
 
@@ -32,7 +32,47 @@ io.on("connection", (socket) => {
     socket.join(roomId);
     console.log(`Socket ${socket.id} joined room ${roomId}`);
   });
+  socket.on(
+    "set-slideshow",
+    async (data: { roomId: string; slides: string[] }) => {
+      try {
+        const mediaState = await prisma.mediaState.upsert({
+          where: { roomId: data.roomId },
+          update: {
+            mediaType: "slideshow",
+            mediaUrl: JSON.stringify(data.slides),
+            slideIndex: 0,
+          },
+          create: {
+            roomId: data.roomId,
+            mediaType: "slideshow",
+            mediaUrl: JSON.stringify(data.slides),
+            slideIndex: 0,
+          },
+        });
+        io.to(data.roomId).emit("media-state", mediaState);
+      } catch (error) {
+        console.error("Set slideshow error:", error);
+      }
+    },
+  );
 
+  socket.on(
+    "slide-change",
+    async (data: { roomId: string; slideIndex: number }) => {
+      try {
+        await prisma.mediaState.update({
+          where: { roomId: data.roomId },
+          data: { slideIndex: data.slideIndex },
+        });
+        socket
+          .to(data.roomId)
+          .emit("slide-change", { slideIndex: data.slideIndex });
+      } catch (error) {
+        console.error("Slide change error:", error);
+      }
+    },
+  );
   socket.on(
     "send-message",
     async (data: { roomId: string; userId: string; content: string }) => {
@@ -45,6 +85,10 @@ io.on("connection", (socket) => {
           },
           include: { user: { select: { id: true, name: true } } },
         });
+
+        // Invalidate the cache for this room
+        await redis.del(`messages:${data.roomId}`);
+        console.log(`Cache invalidated for room ${data.roomId}`);
 
         io.to(data.roomId).emit("new-message", message);
       } catch (error) {

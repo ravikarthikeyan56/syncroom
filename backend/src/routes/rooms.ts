@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { authenticate, AuthRequest } from "../middleware/auth";
-
+import redis from "../lib/redis";
 const router = Router();
 
 function generateRoomCode(): string {
@@ -110,13 +110,28 @@ router.get("/:roomId/messages", authenticate, async (req: AuthRequest, res) => {
         .json({ error: "You are not a member of this room" });
     }
 
+    // Step 1: check Redis cache first
+    const cacheKey = `messages:${roomId}`;
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      console.log(`Cache HIT for room ${roomId}`);
+      return res.json({ messages: JSON.parse(cached), fromCache: true });
+    }
+
+    console.log(`Cache MISS for room ${roomId} — querying PostgreSQL`);
+
+    // Step 2: cache miss — query PostgreSQL
     const messages = await prisma.message.findMany({
       where: { roomId },
       include: { user: { select: { id: true, name: true } } },
       orderBy: { createdAt: "asc" },
     });
 
-    res.json({ messages });
+    // Step 3: store in Redis with 5 minute expiry
+    await redis.set(cacheKey, JSON.stringify(messages), "EX", 300);
+
+    res.json({ messages, fromCache: false });
   } catch (error) {
     console.error("Get messages error:", error);
     res.status(500).json({ error: "Something went wrong" });
