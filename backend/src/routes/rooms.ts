@@ -13,7 +13,7 @@ function generateRoomCode(): string {
   return code;
 }
 
-// Create a room
+// Create a ro
 router.post("/", authenticate, async (req: AuthRequest, res) => {
   try {
     const { name } = req.body;
@@ -49,7 +49,7 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
 });
 
 // Join a room
-router.post("/join", authenticate, async (req: AuthRequest, res) => {
+router.post("/jon", authenticate, async (req: AuthRequest, res) => {
   try {
     const { code } = req.body;
 
