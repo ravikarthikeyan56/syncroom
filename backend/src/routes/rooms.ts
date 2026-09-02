@@ -49,7 +49,7 @@ router.post("/", authenticate, async (req: AuthRequest, res) => {
 });
 
 // Join a room
-router.post("/jon", authenticate, async (req: AuthRequest, res) => {
+router.post("/join", authenticate, async (req: AuthRequest, res) => {
   try {
     const { code } = req.body;
 
